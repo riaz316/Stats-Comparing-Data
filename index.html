@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comparing test scores of two classes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Figtree:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#FFFFFF; --surface:#FFFFFF; --ink:#14213D; --muted:#566377; --line:#D9DFE8;
+  --a:#1F46D1; --a-soft:#E4EAFF; --b:#D9480F; --b-soft:#FFE9DD;
+  --chip:#EEF1F6; --lo:#DCEBFA; --hi:#EBE0F8; --hl:#FFE066; --hl-ink:#14213D;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+html{height:auto;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 60px)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:#fff;color:var(--ink);font:400 16px/1.55 "Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#fff;z-index:10}
+h1,h2,h3{font-family:"Bricolage Grotesque","Figtree",system-ui,sans-serif;line-height:1.15;margin:0}
+h1{font-size:clamp(28px,5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:clamp(24px,3.4vw,32px);font-weight:700;margin-bottom:6px}
+h3{font-size:19px;font-weight:600;margin-bottom:4px}
+p{margin:0 0 8px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header.top{padding:34px 0 18px}
+header.top p{color:var(--muted);max-width:68ch;margin-top:10px}
+nav.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:11;background:#fff;border-bottom:1px solid var(--line)}
+nav.jump .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:10px;padding-bottom:10px}
+nav.jump a{white-space:nowrap;color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:500}
+nav.jump a:hover{border-color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+section{padding:44px 0 8px}
+.lead{color:var(--muted);max-width:72ch;margin-bottom:20px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;padding:16px;min-width:0}
+.panel.A{--c:var(--a);--soft:var(--a-soft)} .panel.B{--c:var(--b);--soft:var(--b-soft)}
+.panel>.who{font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;gap:10px;color:var(--c)}
+.panel>.who span{color:var(--muted);font-weight:400}
+.stat{margin-top:34px}
+.stat>.what{color:var(--muted);margin-bottom:12px;max-width:72ch}
+ol.steps{margin:0;padding-left:24px}
+.sli{margin:0 0 14px;padding-left:4px}
+.sli::marker{color:var(--muted);font-weight:600}
+.sth{font-weight:600;margin-bottom:4px}
+.sli.fresh{animation:slidein .45s ease both}
+@keyframes slidein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sli.fresh{animation:none}}
+.result{margin-top:10px;padding:9px 12px;border-radius:8px;background:var(--soft);font-weight:600}
+.hint{color:var(--muted);margin:0 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
+.chip{display:inline-block;padding:2px 7px;border-radius:6px;background:var(--chip);font-size:14px;white-space:nowrap;transition:background .3s,opacity .3s,outline-color .3s}
+.chip .pos{font-size:10px;color:var(--muted);margin-right:3px;vertical-align:sub}
+.chip.lo{background:var(--lo)} .chip.hi{background:var(--hi)}
+.chip.hl{background:var(--hl);color:var(--hl-ink);font-weight:600}
+.chip.hl .pos{color:inherit;opacity:.7}
+.chip.q{outline:2px solid var(--ink);outline-offset:-1px;font-weight:600}
+.chip.off{opacity:.28}
+.chip i{font-style:normal;color:var(--muted);margin-left:3px}
+.pulse{animation:pulse .7s ease 2}
+@keyframes pulse{50%{transform:scale(1.25)}}
+.run{margin:4px 0;font-size:15px}
+.run b{font-size:18px}
+.dots{display:flex;flex-wrap:wrap;gap:3px;margin:8px 0}
+.dot{width:14px;height:14px;border-radius:4px;background:var(--chip);transition:background .15s}
+.dot.on{background:var(--c)}
+.mlist{max-height:280px;overflow:auto;margin:8px 0;padding-right:4px}
+.mrow{display:grid;grid-template-columns:54px 1fr 26px;gap:8px;align-items:center;font-size:13px;height:21px;border-radius:5px;padding:0 4px}
+.mrow.max{background:var(--hl)}
+.mtrack{height:12px;border-radius:3px;background:var(--chip)}
+.mbar{height:100%;border-radius:3px;background:var(--c)}
+.mrow b{text-align:right}
+.tally td.tl,.tally th:nth-child(2){text-align:left}
+.tally td.fc,.tally th:nth-child(3){text-align:center;width:90px}
+.tally tr.max{background:var(--hl)}
+.tally tr.tick{background:var(--hl)}
+.tally tr.flash{animation:flash .6s ease 3}
+@keyframes flash{50%{background:transparent}}
+.tg{display:inline-block;position:relative;height:18px;margin-right:8px;vertical-align:middle}
+.tg .t{display:inline-block;width:2px;height:18px;background:var(--ink);margin:0 3px 0 0;vertical-align:top;border-radius:1px}
+.tg.five::after{content:"";position:absolute;left:-3px;right:-1px;top:8px;height:2px;background:var(--ink);transform:rotate(-22deg);border-radius:1px}
+.bpdata{display:grid;gap:8px;margin:0 0 16px;padding-bottom:14px;border-bottom:1px dashed var(--line)}
+.bprow{display:flex;gap:10px;align-items:flex-start}
+.bplab{font-weight:600;min-width:64px;padding-top:2px}
+.bprow .chips{margin:0}
+.chip.done{background:var(--lo);outline:1px solid var(--muted);outline-offset:-1px}
+.chip.out{background:#FFD9D9;outline:2px solid #D32F2F;outline-offset:-1px;color:#7A1010;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin:6px 0 10px}
+.legend b{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+.raw{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.raw input{width:100%;min-width:0;font:inherit;font-size:15px;text-align:center;padding:7px 2px;border:1px solid transparent;border-radius:6px;background:var(--chip);color:var(--ink);-moz-appearance:textfield;appearance:textfield}
+.raw input::-webkit-outer-spin-button,.raw input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.raw input:hover{border-color:var(--line)}
+.raw input:focus{outline:none;border-color:var(--c);background:#fff;box-shadow:0 0 0 2px var(--soft)}
+.raw input:placeholder-shown{border:1px dashed var(--muted);background:#fff}
+.edbar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.edbar .btn{padding:5px 12px}
+.notice{margin-top:14px;padding:12px 16px;border-radius:8px;background:#FFF3E0;border:1px solid #F5B35B;max-width:80ch}
+[hidden]{display:none!important}
+/* stem and leaf */
+.sl{position:relative;background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 16px;overflow-x:auto}
+.tray{display:grid;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed var(--line);min-width:520px}
+.tray-row{display:flex;gap:10px;align-items:flex-start}
+.tray-lab{font-weight:600;min-width:64px;padding-top:2px}
+.tray-lab.a{color:var(--a)} .tray-lab.b{color:var(--b)}
+.tray-chips{display:flex;flex-wrap:wrap;gap:4px}
+.tchip{padding:1px 6px;border-radius:6px;background:var(--chip);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;transition:opacity .3s}
+.tchip.used{opacity:.22}
+.sl-grid{display:grid;grid-template-columns:34px minmax(220px,1fr) 44px minmax(220px,1fr) 34px;align-items:stretch;min-width:620px}
+.sl-grid>div{padding:5px 8px;display:flex;align-items:center}
+.sl-head{font-weight:600}
+.sl-head.a{color:var(--a)} .sl-head.b{color:var(--b)}
+.sl-n{color:var(--muted);font-size:13px;justify-content:center;transition:opacity .4s}
+.sl-leaves{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:20px;gap:4px}
+.sl-leaves.a{flex-direction:row-reverse;color:var(--a)} .sl-leaves.b{color:var(--b)}
+.sl-stem{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;font-size:22px;font-weight:700;justify-content:center;border-left:2px solid var(--ink);border-right:2px solid var(--ink);transition:opacity .4s}
+.leaf{display:inline-block;padding:0 3px;border-radius:4px;cursor:default}
+.leaf:hover{background:var(--hl);color:var(--hl-ink)}
+.fly{position:absolute;z-index:20;padding:0 3px;border-radius:4px;background:var(--hl);color:var(--hl-ink);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;line-height:1.55;pointer-events:none;box-shadow:0 2px 8px rgba(20,33,61,.25)}
+.readout{margin-top:12px;min-height:24px;color:var(--muted);font-size:14px}
+.note{color:var(--muted);font-size:14px;margin-top:10px;max-width:80ch}
+/* controls */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button,.btn{font:inherit;font-size:14px;font-weight:500;padding:7px 14px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.btn{border:1px solid var(--line);border-radius:8px;background:#fff}
+.btn:hover:not(:disabled){border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.steppills{display:flex;flex-wrap:wrap;gap:6px}
+.steppills button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.steppills button[aria-current="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.stepinfo{margin:4px 0 12px;min-height:56px}
+.stepinfo h3{margin-bottom:2px}
+/* tables */
+.tbl{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:8px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:5px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:#fff;font-weight:600}
+tfoot td{font-weight:600}
+tbody tr{transition:opacity .25s}
+.c3,tfoot{transition:opacity .3s}
+table.plain th{position:static}
+/* charts */
+.chartbox{position:relative;height:300px}
+.chartwrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:16px}
+/* box plot */
+.bpwrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px}
+.bpscroll{overflow-x:auto}
+.bpscroll svg{display:block;min-width:620px;width:100%;height:auto}
+.bp text{font-family:"Figtree",system-ui,sans-serif}
+.bp .grid{stroke:var(--line);stroke-width:1}
+.bp .axis{stroke:var(--muted);stroke-width:1.5}
+.bp .tick{fill:var(--muted);font-size:13px}
+.bp .rowlab{font-size:15px;font-weight:600}
+.bp .vlab{font-size:12.5px;fill:var(--ink)}
+.bp .stp{transition:opacity .35s}
+@media (prefers-reduced-motion:reduce){.bp .stp{transition:none}}
+.summary-table{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto}
+.summary-table th,.summary-table td{padding:8px 14px}
+.findings{margin:18px 0 0;padding:0;list-style:none;display:grid;gap:10px}
+.findings li{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.findings b{font-family:"Bricolage Grotesque","Figtree",sans-serif;font-size:17px;display:block;margin-bottom:2px}
+footer{padding:40px 0 60px;color:var(--muted);font-size:14px}
+.err{color:var(--muted);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <h1>Comparing test scores of two classes</h1>
+</div></header>
+<nav class="jump" aria-label="Sections"><div class="wrap">
+  <a href="#raw">Raw data</a><a href="#stem">Stem and leaf</a><a href="#centre">Central tendency</a><a href="#spread">Spread</a><a href="#charts">Charts</a><a href="#box">Box plot</a><a href="#summary">Comparison</a>
+</div></nav>
+
+<main class="wrap">
+  <section id="raw">
+    <h2>Raw data</h2>
+    <div class="two" id="rawOut"></div>
+    <div class="controls" style="margin-top:14px"><button class="btn" type="button" id="rawReset">Reset to original data</button></div>
+    <p class="note" style="margin-top:0">Edit any box, or use Add and Remove. Values are whole-number percentages from 0 to 100. Press Enter to move to the next box (on the last box it adds a new one), and press Backspace in an empty box to delete it. Everything below updates automatically.</p>
+    <div class="notice" id="rawNotice" hidden></div>
+  </section>
+
+  <div id="analysis">
+  <section id="stem">
+    <h2>Stem and leaf diagram</h2>
+    <p class="lead">One shared stem for both classes. Class A’s leaves run to the left of the stem and Class B’s to the right. Press Next to watch each value fly into place.</p>
+    <div class="controls" id="slCtl"></div>
+    <div class="stepinfo" id="slInfo" aria-live="polite"></div>
+    <div class="sl" id="slOut"></div>
+    <div class="readout" id="slRead" aria-live="polite">Hover over a leaf to see the exact value behind it.</div>
+    <p class="note" id="slNote" style="transition:opacity .4s"></p>
+  </section>
+
+  <section id="centre">
+    <h2>Central tendency</h2>
+    <p class="lead">Mean, median and mode for each class. Values show to 2 decimal places, but sums use exact fractions, so adding the rounded figures by hand can differ by 0.01.</p>
+    <div class="stat"><h3>Mean</h3><p class="what">The total of all values divided by how many values there are.</p><div id="meanOut"></div></div>
+    <div class="stat"><h3>Median</h3><p class="what">The middle value once the data is in order. With an even number of values, it is the average of the two middle ones.</p><div id="medianOut"></div></div>
+    <div class="stat"><h3>Mode</h3><p class="what">The value that appears most often.</p><div id="modeOut"></div></div>
+  </section>
+
+  <section id="spread">
+    <h2>Spread</h2>
+    <p class="lead">How far the marks are spread out in each class.</p>
+    <div class="stat"><h3>Range</h3><p class="what">Highest value minus lowest value.</p><div id="rangeOut"></div></div>
+    <div class="stat"><h3>Interquartile range (IQR)</h3><p class="what">The spread of the middle 50% of the data: Q3 minus Q1. Quartiles come from splitting the ordered data into a lower and an upper half, leaving out the median when there is an odd number of values.</p>
+      <div class="legend"><span><b style="background:var(--lo)"></b>Lower half</span><span><b style="background:var(--hi)"></b>Upper half</span><span><b style="background:var(--hl)"></b>Median (Q2)</span><span><b style="outline:2px solid var(--ink);outline-offset:-2px"></b>Q1 and Q3</span></div>
+      <div id="iqrOut"></div></div>
+    <div class="stat"><h3>Standard deviation</h3><p class="what">The typical distance of a value from the mean.</p>
+      <div class="controls"><div class="seg" role="group" aria-label="Standard deviation type"><button type="button" id="sdPop" aria-pressed="true">Population (÷ n)</button><button type="button" id="sdSamp" aria-pressed="false">Sample (÷ n − 1)</button></div><span class="note" style="margin:0">Population treats each class as the whole group of interest.</span></div>
+      <div id="sdOut"></div></div>
+  </section>
+
+  <section id="charts">
+    <h2>Charts</h2>
+    <p class="lead">Percentages are grouped into five grade bands so they can be shown as categories. Hover over any slice or bar for the exact figures.</p>
+    <div class="two">
+      <div class="panel A"><div class="who">Class A <span>share of students in each band</span></div><div class="chartbox"><canvas id="pieA" role="img" aria-label="Pie chart of Class A grade bands"></canvas></div></div>
+      <div class="panel B"><div class="who">Class B <span>share of students in each band</span></div><div class="chartbox"><canvas id="pieB" role="img" aria-label="Pie chart of Class B grade bands"></canvas></div></div>
+    </div>
+    <div class="chartwrap">
+      <div class="controls"><strong>Bar chart</strong><div class="seg" role="group" aria-label="Bar chart values"><button type="button" id="barCount" aria-pressed="true">Number of students</button><button type="button" id="barPct" aria-pressed="false">% of class</button></div></div>
+      <div class="chartbox"><canvas id="bar" role="img" aria-label="Bar chart comparing grade bands for both classes"></canvas></div>
+    </div>
+    <div class="summary-table" style="margin-top:16px"><table class="plain" id="bandTable"></table></div>
+  </section>
+
+  <section id="box">
+    <h2>Box plot</h2>
+    <p class="lead">Both classes on one grid. Step through to see how each box plot is built from the five-number summary.</p>
+    <div class="bpwrap">
+      <div class="controls">
+        <button class="btn" type="button" id="stepBack">Back</button>
+        <div class="steppills" id="pills"></div>
+        <button class="btn" type="button" id="stepNext">Next</button>
+        <button class="btn" type="button" id="stepAll">Show all</button>
+      </div>
+      <div class="stepinfo" id="stepInfo" aria-live="polite"></div>
+      <div class="legend" id="bpLegend"><span><b style="background:var(--hl)"></b>Being plotted now</span><span><b style="background:var(--lo);outline:1px solid var(--muted)"></b>Already plotted</span><span><b style="background:#FFD9D9;outline:2px solid #D32F2F"></b>Outlier</span></div>
+      <div class="bpdata" id="bpData"></div>
+      <div class="bpscroll"><svg class="bp" id="bpSvg" viewBox="0 0 780 300" role="img" aria-label="Box plots of Class A and Class B on one shared axis"></svg></div>
+    </div>
+    <h3 style="margin-top:26px">The working</h3>
+    <div class="summary-table" style="margin-top:10px"><table class="plain" id="workTable"></table></div>
+    <p class="note">Fences: any value more than 1.5 × IQR below Q1 or above Q3 is flagged as an outlier. Whiskers stop at the most extreme values that are still inside the fences.</p>
+  </section>
+
+  <section id="summary">
+    <h2>Comparison</h2>
+    <p class="lead">Every statistic side by side, with what they say about the two classes.</p>
+    <div class="summary-table"><table class="plain" id="sumTable"></table></div>
+    <ul class="findings" id="findings"></ul>
+  </section>
+  </div>
+</main>
+<footer><div class="wrap">Calculated in the browser from the Interim 1 percentage column. Quartiles use the median-of-halves method.</div></footer>
+
+<script>
+const MARKS={
+  A:[46,37,32,40,41,36,37,36,40,30,41,34,46,33,32,43,39,44,36,42,45,40,26,48,44,37,51,39,33,36,29],
+  B:[38,40,54,49,54,53,47,44,46,47,52,41,41,49,52,48,43,39,47,45,45,49,46,45,50,45,48,45,45,32,29,39]
+};
+const NAME={A:'Class A',B:'Class B'};
+const KEYS=['A','B'];
+const pct=m=>Math.round(m*5/3);
+const fmt=(x,d=2)=>d===2?String(+Number(x).toFixed(2)):Number(x).toFixed(d);
+const f2=x=>Number(x).toFixed(2);
+const med=a=>{const n=a.length;return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2};
+const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
+const midIdx=(start,len)=>len%2?[start+(len-1)/2]:[start+len/2-1,start+len/2];
+const DEF={A:MARKS.A.map(pct),B:MARKS.B.map(pct)};
+const DATA={A:[...DEF.A],B:[...DEF.B]};
+const MAXN=60, MINN=4;
+const STEPPERS=[];
+const motionOK=()=>!matchMedia('(prefers-reduced-motion: reduce)').matches;
+let sdMode='pop', stepNo=1, barMode='count', charts=[];
+
+function compute(k){
+  const raw=DATA[k].filter(v=>v!=null), n=raw.length;
+  const oi=raw.map((m,i)=>i).sort((a,b)=>raw[a]-raw[b]||a-b);
+  const sorted=oi.map(i=>raw[i]);
+  const sum=raw.reduce((a,b)=>a+b,0);
+  const mean=sum/n;
+  const freq=new Map(); sorted.forEach(v=>freq.set(v,(freq.get(v)||0)+1));
+  const maxF=Math.max(...freq.values());
+  const modes=[...freq.entries()].filter(e=>e[1]===maxF).map(e=>e[0]);
+  const L=Math.floor(n/2);
+  const lower=sorted.slice(0,L), upper=sorted.slice(n-L);
+  const q1=med(lower), q2=med(sorted), q3=med(upper), iqr=q3-q1;
+  const min=sorted[0], max=sorted[n-1];
+  const devs=sorted.map(x=>({x,d:x-mean,sq:(x-mean)**2}));
+  const ssd=devs.reduce((a,b)=>a+b.sq,0);
+  const sdPop=Math.sqrt(ssd/n), sdSamp=Math.sqrt(ssd/(n-1));
+  const loF=q1-1.5*iqr, hiF=q3+1.5*iqr;
+  const outliers=sorted.filter(x=>x<loF||x>hiF);
+  const inl=sorted.filter(x=>x>=loF&&x<=hiF);
+  return {k,n,raw,oi,sorted,sum,mean,freq,maxF,modes,L,lower,upper,q1,q2,q3,iqr,min,max,devs,ssd,sdPop,sdSamp,loF,hiF,outliers,wLo:Math.min(...inl),wHi:Math.max(...inl),range:max-min,
+    median:q2, medMid:midIdx(0,n), q1Idx:midIdx(0,L), q3Idx:midIdx(n-L,L)};
+}
+const D={};
+D.A=compute('A'); D.B=compute('B');
+const modeText=d=>d.maxF===1?'None':d.modes.map(v=>fmt(v)+'%').join(', ');
+
+const panel=(k,body,note)=>`<div class="panel ${k}"><div class="who">${NAME[k]}<span>${note??('n = '+D[k].n)}</span></div>${body}</div>`;
+const chip2=(v,cls,pos,o)=>`<span class="chip ${cls}" data-o="${o}" data-c="${cls}"><span class="pos">${pos}</span>${fmt(v)}</span>`;
+const res=t=>`<div class="result">${t}</div>`;
+const later=(el,ms,fn)=>setTimeout(()=>{if(el.isConnected)fn()},ms);
+function countUp(el,to,dp,ms){
+  if(!el)return; const t0=performance.now();
+  (function f(t){ if(!el.isConnected)return; const p=Math.min(1,(t-t0)/ms), e=1-Math.pow(1-p,3);
+    el.textContent=(to*e).toFixed(dp); if(p<1)requestAnimationFrame(f); else el.textContent=dp===2?fmt(to):Number(to).toFixed(dp); })(t0);
+}
+function sortAnim(li){
+  const host=li.querySelector('.sortc'); if(!host)return;
+  const chips=[...host.children], finalOrder=[...chips];
+  [...chips].sort((a,b)=>a.dataset.o-b.dataset.o).forEach(c=>host.appendChild(c));
+  const first=chips.map(c=>c.getBoundingClientRect());
+  finalOrder.forEach(c=>host.appendChild(c));
+  const pos=chips.map(c=>c.querySelector('.pos')); pos.forEach(p=>p.style.opacity=0);
+  chips.forEach((c,i)=>{const r=c.getBoundingClientRect(),dx=first[i].left-r.left,dy=first[i].top-r.top;
+    if(dx||dy)c.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:1000,delay:350,easing:'cubic-bezier(.3,.7,.2,1)',fill:'backwards'});});
+  later(li,1500,()=>pos.forEach(p=>{p.style.transition='opacity .4s';p.style.opacity=1}));
+}
+const firstLi=li=>li.parentNode.querySelector('li[data-i="0"]');
+
+/* generic controls and stepper */
+function buildControls(host,first,last,onSet,getCur){
+  const nums=[];for(let i=first;i<=last;i++)nums.push(i);
+  host.innerHTML=`<button class="btn" type="button" data-a="back">Back</button><div class="steppills">${nums.map(i=>`<button type="button" data-n="${i}" aria-label="Step ${i}">${i}</button>`).join('')}</div><button class="btn" type="button" data-a="next">Next</button><button class="btn" type="button" data-a="replay">Replay step</button><button class="btn" type="button" data-a="all">Show all</button>`;
+  host.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return; const a=b.dataset.a, c=getCur();
+    if(a==='back')onSet(c-1,false); else if(a==='next')onSet(c+1,true); else if(a==='replay')onSet(c,'replay'); else if(a==='all')onSet(last,false);
+    else if(b.dataset.n){const n=+b.dataset.n;onSet(n,n===c+1);}
+  });
+  return {update(cur){host.querySelectorAll('.steppills button').forEach(b=>{if(+b.dataset.n===cur)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current')});
+    host.querySelector('[data-a="back"]').disabled=cur===first; host.querySelector('[data-a="next"]').disabled=cur===last;}};
+}
+function Stepper(id,steps,start=1){
+  const root=document.getElementById(id), last=start+steps.length-1; let cur=start, played=false;
+  root.innerHTML='<div class="controls"></div><div class="two"></div>';
+  const host=root.lastChild;
+  const ctl=buildControls(root.firstChild,start,last,(n,a)=>{cur=Math.max(start,Math.min(last,n));played=true;render(!!a)},()=>cur);
+  function render(anim){
+    const idx=cur-start;
+    host.innerHTML=KEYS.map(k=>panel(k,`<ol class="steps">${steps.slice(0,idx+1).map((s,i)=>`<li class="sli ${i===idx&&anim?'fresh':''}" data-i="${i}" value="${start+i}"><div class="sth">${typeof s.t==='function'?s.t(cur):s.t}</div>${s.html(D[k],cur,k)}</li>`).join('')}</ol>`)).join('');
+    ctl.update(cur);
+    if(anim&&motionOK()&&steps[idx].anim)host.querySelectorAll('.panel').forEach((p,pi)=>steps[idx].anim(p.querySelector(`li[data-i="${idx}"]`),D[KEYS[pi]]));
+  }
+  render(false);
+  if(start===1&&typeof IntersectionObserver==='function'){
+    new IntersectionObserver((es,ob)=>{if(es[0].isIntersecting){ob.disconnect();if(!played&&cur===start)render(true);}},{threshold:.35}).observe(root);
+  }
+  const api={render};
+  STEPPERS.push(api);
+  return api;
+}
+
+/* 1. raw data editor */
+const rawOut=document.getElementById('rawOut');
+const parseVal=s=>{s=String(s).trim();if(s==='')return null;const x=Number(s);if(!Number.isFinite(x))return null;return Math.max(0,Math.min(100,Math.round(x)));};
+const validCount=k=>DATA[k].filter(v=>v!=null).length;
+function countNote(k){const v=validCount(k),e=DATA[k].length-v;return `${v} value${v===1?'':'s'}${e?` (${e} empty ignored)`:''}`;}
+function renderEditor(focus){
+  rawOut.innerHTML=KEYS.map(k=>panel(k,`<div class="raw">${DATA[k].map((v,i)=>`<input type="number" inputmode="numeric" min="0" max="100" step="1" data-k="${k}" data-i="${i}" value="${v==null?'':v}" placeholder="–" aria-label="${NAME[k]} value ${i+1}">`).join('')}</div>
+    <div class="edbar"><button class="btn" type="button" data-act="add" data-k="${k}" ${DATA[k].length>=MAXN?'disabled':''}>Add a value</button><button class="btn" type="button" data-act="rem" data-k="${k}" ${DATA[k].length===0?'disabled':''}>Remove last</button></div>`,countNote(k))).join('');
+  if(focus){const el=rawOut.querySelector(`input[data-k="${focus.k}"][data-i="${focus.i}"]`);if(el)el.focus();}
+}
+let refreshTimer;
+const scheduleRefresh=()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(refreshAll,350)};
+rawOut.addEventListener('input',e=>{
+  const t=e.target; if(!t.matches('input'))return;
+  const k=t.dataset.k,i=+t.dataset.i; DATA[k][i]=parseVal(t.value);
+  rawOut.querySelector(`.panel.${k} .who span`).textContent=countNote(k);
+  scheduleRefresh();
+});
+rawOut.addEventListener('change',e=>{
+  const t=e.target; if(!t.matches('input'))return;
+  const v=DATA[t.dataset.k][+t.dataset.i]; if(v!=null)t.value=String(v);
+});
+rawOut.addEventListener('keydown',e=>{
+  const t=e.target; if(!t.matches('input'))return;
+  const k=t.dataset.k,i=+t.dataset.i;
+  if((e.key==='Backspace'||e.key==='Delete')&&t.value===''){
+    e.preventDefault(); DATA[k].splice(i,1); renderEditor(DATA[k].length?{k,i:Math.max(0,i-1)}:null); refreshAll();
+  }else if(e.key==='Enter'){
+    e.preventDefault();
+    const next=rawOut.querySelector(`input[data-k="${k}"][data-i="${i+1}"]`);
+    if(next)next.focus(); else if(DATA[k].length<MAXN){DATA[k].push(null);renderEditor({k,i:DATA[k].length-1});}
+  }
+});
+rawOut.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]'); if(!b)return; const k=b.dataset.k;
+  if(b.dataset.act==='add'){ if(DATA[k].length>=MAXN)return; DATA[k].push(null); renderEditor({k,i:DATA[k].length-1}); }
+  else { DATA[k].pop(); renderEditor(); refreshAll(); }
+});
+document.getElementById('rawReset').onclick=()=>{DATA.A=[...DEF.A];DATA.B=[...DEF.B];renderEditor();refreshAll();};
+
+/* 2. stem and leaf, step by step */
+let stemRefresh=()=>{};
+(function(){
+  const out=document.getElementById('slOut'), note=document.getElementById('slNote'), info=document.getElementById('slInfo');
+  let R,all,s0,s1,cur=0,gen=0;
+  note.textContent='Key: stem 5 and leaf 7 means 57% (the stem is the tens digit and the leaf is the units digit). The small grey numbers count the leaves on each stem.';
+  function order(){
+    out.querySelectorAll('.sl-leaves').forEach(cell=>{
+      [...cell.children].sort((a,b)=>a.dataset.l-b.dataset.l||a.dataset.i-b.dataset.i).forEach(l=>cell.appendChild(l));
+    });
+  }
+  function build(){
+    R={A:D.A.raw,B:D.B.raw}; all=[...R.A,...R.B];
+    s0=Math.floor(Math.min(...all)/10); s1=Math.floor(Math.max(...all)/10);
+    const tray=`<div class="tray">${KEYS.map(k=>`<div class="tray-row"><span class="tray-lab ${k.toLowerCase()}">${NAME[k]}</span><div class="tray-chips">${R[k].map((v,i)=>`<span class="tchip" data-k="${k}" data-i="${i}">${v}</span>`).join('')}</div></div>`).join('')}</div>`;
+    let g=`<div class="sl-grid"><div></div><div class="sl-head a" style="justify-content:flex-end">Class A</div><div class="sl-head" style="justify-content:center">Stem</div><div class="sl-head b">Class B</div><div></div>`;
+    for(let s=s0;s<=s1;s++){
+      const lv=k=>R[k].map((v,i)=>({v,i})).filter(o=>Math.floor(o.v/10)===s);
+      const leaf=(k,o)=>`<span class="leaf" data-k="${k}" data-s="${s}" data-l="${o.v%10}" data-v="${o.v}" data-i="${o.i}">${o.v%10}</span>`;
+      const a=lv('A'), b=lv('B');
+      g+=`<div class="sl-n">${a.length}</div><div class="sl-leaves a" data-k="A">${a.map(o=>leaf('A',o)).join('')}</div><div class="sl-stem">${s}</div><div class="sl-leaves b" data-k="B">${b.map(o=>leaf('B',o)).join('')}</div><div class="sl-n">${b.length}</div>`;
+    }
+    out.innerHTML=tray+g+'</div>';
+    order();
+  }
+  const INFO=()=>[
+    ['The raw data','These are the percentages for each class as whole numbers, in the order they appear in the raw data. Every one of them will be placed on the diagram.'],
+    ['Choose the stems',`The stem is the tens digit. The lowest value is ${Math.min(...all)} and the highest is ${Math.max(...all)}, so the stems run from ${s0} to ${s1}.`],
+    ['Place Class A’s leaves','Take the Class A values from smallest to largest. Split each into stem and leaf (for example, 57 has stem 5 and leaf 7) and place the leaf on its stem’s row. Because the values are taken in order, each leaf lands in the right place and every row ends up ordered. Class A’s leaves are written to the left of the stem, smallest nearest the stem.'],
+    ['Place Class B’s leaves','Do the same for Class B on the right of the stem, again taking the values from smallest to largest.'],
+    ['Add the key and counts',`Add a key so the diagram can be read, and count the leaves on each stem. The counts add up to ${D.A.n} for Class A and ${D.B.n} for Class B.`]
+  ];
+  const clear=()=>out.querySelectorAll('.fly').forEach(f=>f.remove());
+  function applyState(n,hide){
+    out.querySelectorAll('.sl-stem').forEach(e=>e.style.opacity=n>=1?1:0);
+    out.querySelectorAll('.sl-n').forEach(e=>e.style.opacity=n>=4?1:0);
+    note.style.opacity=n>=4?1:0;
+    const shown=k=>(k==='A'?n>=2:n>=3)&&hide!==k;
+    out.querySelectorAll('.leaf').forEach(l=>l.style.visibility=shown(l.dataset.k)?'visible':'hidden');
+    out.querySelectorAll('.tchip').forEach(c=>c.classList.toggle('used',shown(c.dataset.k)));
+  }
+  function fly(k,myGen){
+    const leaves=[...out.querySelectorAll(`.leaf[data-k="${k}"]`)].sort((a,b)=>a.dataset.v-b.dataset.v||a.dataset.i-b.dataset.i);
+    const step=Math.min(55,2200/Math.max(1,leaves.length));
+    leaves.forEach((leaf,j)=>setTimeout(()=>{
+      if(myGen!==gen)return;
+      const chip=out.querySelector(`.tchip[data-k="${k}"][data-i="${leaf.dataset.i}"]`);
+      const c=out.getBoundingClientRect(), t=leaf.getBoundingClientRect(), s=chip.getBoundingClientRect();
+      const f=document.createElement('span'); f.className='fly'; f.textContent=leaf.dataset.v;
+      f.style.left=(t.left-c.left+out.scrollLeft)+'px'; f.style.top=(t.top-c.top+out.scrollTop)+'px';
+      out.appendChild(f); chip.classList.add('used');
+      const an=f.animate([{transform:`translate(${s.left-t.left}px,${s.top-t.top}px) scale(1.2)`},{transform:'translate(0,0) scale(1)'}],{duration:700,easing:'cubic-bezier(.25,.8,.3,1)'});
+      setTimeout(()=>{if(f.isConnected)f.textContent=leaf.dataset.l},330);
+      an.onfinish=()=>{f.remove();if(myGen===gen)leaf.style.visibility='visible'};
+    },j*step));
+  }
+  function show(n){const i=INFO()[n];info.innerHTML=`<h3>Step ${n}: ${i[0]}</h3><p>${i[1]}</p>`;ctl.update(n);}
+  function go(n,anim){
+    n=Math.max(0,Math.min(4,n)); gen++; const my=gen; clear();
+    const mo=anim&&motionOK();
+    if(mo&&(n===2||n===3)){const k=n===2?'A':'B'; applyState(n,k); fly(k,my);}
+    else applyState(n);
+    cur=n; show(n);
+  }
+  const ctl=buildControls(document.getElementById('slCtl'),0,4,(n,a)=>{
+    if(a==='replay'){ if(cur>=2&&cur<=3)applyState(cur-1); go(cur,true); } else go(n,a);
+  },()=>cur);
+  build(); go(0,false);
+  stemRefresh=()=>{gen++;build();applyState(cur);show(cur);};
+  const outRead=document.getElementById('slRead');
+  out.addEventListener('mouseover',e=>{
+    const t=e.target.closest('.leaf'); if(!t)return;
+    outRead.textContent=`${NAME[t.dataset.k]}: stem ${t.dataset.s}, leaf ${t.dataset.l} is ${t.dataset.v}%.`;
+  });
+})();
+
+/* 3. central tendency steppers */
+const sortedChips=(d,fn)=>`<div class="chips sortc">${d.sorted.map((v,i)=>chip2(v,fn(i),i+1,d.oi[i])).join('')}</div>`;
+const isOdd=d=>d.n%2===1;
+
+Stepper('meanOut',[
+  {t:'Add up all the values',
+   html:d=>`<div class="chips">${d.raw.map(v=>chip2(v,'',' ','')).join('').replace(/<span class="pos"> <\/span>/g,'')}</div><div class="run">Total: <b class="runv">${fmt(d.sum)}</b></div>`,
+   anim:(li,d)=>{const cs=[...li.querySelectorAll('.chip')],rv=li.querySelector('.runv');cs.forEach(c=>c.classList.add('off'));rv.textContent='0';
+     let cum=0;const step=Math.min(80,2000/d.n);
+     cs.forEach((c,i)=>{cum+=d.raw[i];const cv=cum;later(li,i*step,()=>{c.classList.remove('off');rv.textContent=fmt(cv)})});
+     later(li,d.n*step+60,()=>rv.textContent=fmt(d.sum));}},
+  {t:'Count the values',
+   html:d=>`<div class="dots">${Array.from({length:d.n},()=>'<span class="dot on"></span>').join('')}</div><div class="run">n = <b class="runv">${d.n}</b></div>`,
+   anim:(li,d)=>{const dots=[...li.querySelectorAll('.dot')],rv=li.querySelector('.runv');dots.forEach(x=>x.classList.remove('on'));rv.textContent='0';
+     dots.forEach((x,i)=>later(li,i*45,()=>{x.classList.add('on');rv.textContent=i+1}));}},
+  {t:'Divide the total by the count',
+   html:d=>`<div class="run">${fmt(d.sum)} ÷ ${d.n} = <b class="runv">${fmt(d.mean)}</b></div>${res(`Mean = ${fmt(d.mean)}%`)}`,
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.mean,2,1000)}
+]);
+
+const dataChips=(d,cur,fn)=>cur>=1
+  ?`<div class="chips sortc">${d.sorted.map((v,i)=>chip2(v,fn(i),i+1,d.oi[i])).join('')}</div>`
+  :`<div class="chips sortc">${d.raw.map((v,i)=>chip2(v,'','',i)).join('')}</div>`;
+const dataTitle=cur=>cur>=1?'The data, now in order':'The raw data, in its original order';
+const orderStep={t:'Put the values in order, smallest to largest',
+  html:()=>`<p class="hint">Rearrange the values so each one is at least as large as the one before it.</p>`,
+  anim:li=>sortAnim(firstLi(li))};
+
+Stepper('medianOut',[
+  {t:dataTitle,html:(d,cur)=>dataChips(d,cur,i=>cur>=3?(d.medMid.includes(i)?'hl':'off'):'')},
+  orderStep,
+  {t:'Count the values and find the middle position',
+   html:d=>isOdd(d)?`<div class="run">n = <b class="runv">${d.n}</b>, an odd number. The middle is position (${d.n} + 1) ÷ 2 = <b>${ord((d.n+1)/2)}</b>.</div>`
+        :`<div class="run">n = <b class="runv">${d.n}</b>, an even number. There are two middle positions: <b>${ord(d.n/2)}</b> and <b>${ord(d.n/2+1)}</b>.</div>`,
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.n,0,800)},
+  {t:'Cross off values from both ends until the middle is left',
+   html:()=>`<p class="hint">The lowest and highest go first, then the next pair, and so on.</p>`,
+   anim:(li,d)=>{const chips=[...firstLi(li).querySelectorAll('.chip')],n=d.n,r=Math.floor((n-1)/2);
+     chips.forEach(c=>c.className='chip');
+     for(let t=0;t<r;t++)later(li,t*110,()=>{chips[t].className='chip off';chips[n-1-t].className='chip off'});
+     later(li,r*110+150,()=>d.medMid.forEach(i=>chips[i].className='chip hl'));}},
+  {t:'Read off the median',
+   html:d=>{const p=d.n/2;return (isOdd(d)?`<div class="run">The ${ord((d.n+1)/2)} value is <b class="runv">${fmt(d.median)}</b></div>`
+     :`<div class="run">The ${ord(p)} and ${ord(p+1)} values are ${fmt(d.sorted[p-1])} and ${fmt(d.sorted[p])}. Their average is (${fmt(d.sorted[p-1])} + ${fmt(d.sorted[p])}) ÷ 2 = <b class="runv">${fmt(d.median)}</b></div>`)+res(`Median = ${fmt(d.median)}%`)},
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.median,2,900)}
+],0);
+
+const tallyHTML=f=>{let h='';for(let g=0;g<Math.floor(f/5);g++)h+='<span class="tg five">'+'<i class="t"></i>'.repeat(4)+'</span>';const r=f%5;if(r)h+='<span class="tg">'+'<i class="t"></i>'.repeat(r)+'</span>';return h};
+Stepper('modeOut',[
+  {t:'Tally how often each value appears',
+   html:(d,cur)=>{const entries=[...d.freq.entries()].sort((a,b)=>a[0]-b[0]);
+     return `<p class="hint">Go through the data in its original order. Each time a value appears, add one tally mark to its row.</p>
+     <div class="tbl" style="max-height:320px"><table class="tally"><thead><tr><th>Value</th><th>Tally</th><th>Frequency</th></tr></thead><tbody>${entries.map(([m,f])=>`<tr class="${cur>=2&&f===d.maxF?'max':''}" data-m="${m}" data-f="${f}"><td>${m}</td><td class="tl">${tallyHTML(f)}</td><td class="fc">${f}</td></tr>`).join('')}</tbody><tfoot><tr><td>Total</td><td></td><td class="fc tot">${d.n}</td></tr></tfoot></table></div>`},
+   anim:(li,d)=>{const tbl=li.querySelector('.tbl'),rows={};li.querySelectorAll('tbody tr').forEach(r=>{rows[r.dataset.m]=r;r.querySelector('.tl').innerHTML='';r.querySelector('.fc').textContent='0'});
+     const tot=li.querySelector('.tot'),counts={};tot.textContent='0';const step=Math.min(110,3200/d.n);
+     d.raw.forEach((m,i)=>later(li,i*step,()=>{const r=rows[m];counts[m]=(counts[m]||0)+1;r.querySelector('.tl').innerHTML=tallyHTML(counts[m]);r.querySelector('.fc').textContent=counts[m];tot.textContent=i+1;
+       r.classList.add('tick');setTimeout(()=>r.classList.remove('tick'),step*1.6);tbl.scrollTop=r.offsetTop-tbl.clientHeight/2;}));}},
+  {t:'Find the highest frequency',
+   html:d=>`<div class="run">The highest frequency in the table is <b>${d.maxF}</b>.</div>`,
+   anim:li=>{const l1=firstLi(li),tbl=l1.querySelector('.tbl'),mx=[...l1.querySelectorAll('tr.max')];
+     mx.forEach(r=>r.classList.remove('max'));
+     if(mx[0])tbl.scrollTop=mx[0].offsetTop-tbl.clientHeight/2;
+     later(li,300,()=>mx.forEach(r=>r.classList.add('max','flash')));}},
+  {t:'Read off the mode',
+   html:d=>d.maxF===1
+     ?`<div class="run">Every value appears only once, so there is no mode.</div>${res('Mode = none')}`
+     :`<div class="run">${d.modes.length===1?'One value appears most often.':`${d.modes.length} values tie for most often, so the data is multimodal.`}</div>${res(`${d.modes.length===1?'Mode':'Modes'} = ${d.modes.map(v=>fmt(v)+'%').join(' and ')} (${d.maxF} students each)`)}`}
+]);
+
+/* 4. spread steppers */
+Stepper('rangeOut',[
+  {t:dataTitle,html:(d,cur)=>dataChips(d,cur,i=>cur>=2&&(i===0||i===d.n-1)?'hl':'')},
+  orderStep,
+  {t:'Pick out the lowest and highest values',
+   html:d=>`<div class="run">Lowest: <b>${fmt(d.min)}</b>. Highest: <b>${fmt(d.max)}</b>.</div>`,
+   anim:(li,d)=>{const cs=[...firstLi(li).querySelectorAll('.chip')],ends=[cs[0],cs[d.n-1]];ends.forEach(c=>c.className='chip');
+     later(li,250,()=>ends.forEach(c=>c.className='chip hl pulse'));}},
+  {t:'Subtract lowest from highest',
+   html:d=>`<div class="run">${fmt(d.max)} − ${fmt(d.min)} = <b class="runv">${fmt(d.range)}</b></div>${res(`Range = ${fmt(d.range)} percentage points`)}`,
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.range,2,900)}
+],0);
+
+const descPos=(len,start)=>len%2?`the ${ord(start+(len+1)/2)} value`:`the average of the ${ord(start+len/2)} and ${ord(start+len/2+1)} values`;
+Stepper('iqrOut',[
+  {t:dataTitle,html:(d,cur)=>dataChips(d,cur,i=>{let c='';
+     if(cur>=2)c=(isOdd(d)&&d.medMid.includes(i))?'hl':(i<d.L?'lo':(i>=d.n-d.L?'hi':''));
+     if(cur>=3&&d.q1Idx.includes(i))c+=' q'; if(cur>=4&&d.q3Idx.includes(i))c+=' q'; return c.trim();})},
+  orderStep,
+  {t:'Split into a lower half and an upper half',
+   html:d=>`<div class="run">${isOdd(d)?`n = ${d.n} is odd, so the median (the ${ord((d.n+1)/2)} value) is left out of both halves.`:`n = ${d.n} is even, so the data splits cleanly into two halves.`} Each half has <b>${d.L}</b> values.</div>`,
+   anim:li=>{const cs=[...firstLi(li).querySelectorAll('.chip')];cs.forEach(c=>c.className='chip');cs.forEach((c,i)=>later(li,i*35,()=>{c.className='chip '+c.dataset.c}));}},
+  {t:'Q1 is the median of the lower half',
+   html:d=>`<div class="run">The lower half has ${d.L} values, so Q1 is ${descPos(d.L,0)}: <b class="runv">${fmt(d.q1)}</b></div>`,
+   anim:(li,d)=>{const cs=[...firstLi(li).querySelectorAll('.chip')],q=d.q1Idx.map(i=>cs[i]);
+     q.forEach(c=>c.className=('chip '+c.dataset.c).replace(/\bq\b/,'').trim());
+     later(li,300,()=>q.forEach(c=>c.className='chip '+c.dataset.c+' pulse'));countUp(li.querySelector('.runv'),d.q1,2,900);}},
+  {t:'Q3 is the median of the upper half',
+   html:d=>`<div class="run">The upper half has ${d.L} values, so Q3 is ${descPos(d.L,d.n-d.L)} in the full ordered list: <b class="runv">${fmt(d.q3)}</b></div>`,
+   anim:(li,d)=>{const cs=[...firstLi(li).querySelectorAll('.chip')],q=d.q3Idx.map(i=>cs[i]);
+     q.forEach(c=>c.className=('chip '+c.dataset.c).replace(/\bq\b/,'').trim());
+     later(li,300,()=>q.forEach(c=>c.className='chip '+c.dataset.c+' pulse'));countUp(li.querySelector('.runv'),d.q3,2,900);}},
+  {t:'Subtract Q1 from Q3',
+   html:d=>`<div class="run">${fmt(d.q3)} − ${fmt(d.q1)} = <b class="runv">${fmt(d.iqr)}</b></div>${res(`IQR = ${fmt(d.iqr)} percentage points`)}`,
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.iqr,2,900)}
+],0);
+
+const sdStepper=Stepper('sdOut',[
+  {t:'Find the mean',
+   html:d=>`<div class="run">x̄ = <b class="runv">${fmt(d.mean)}</b></div>`,
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.mean,2,900)},
+  {t:'Subtract the mean from each value',
+   html:(d,cur)=>{const tot=d.devs.reduce((a,b)=>a+b.d,0);
+     return `<p class="hint">Find x − x̄ for every value${cur>=3?', then square it':''}.</p><div class="tbl"><table><thead><tr><th>x</th><th>x − x̄</th>${cur>=3?'<th class="c3">(x − x̄)²</th>':''}</tr></thead><tbody>${d.devs.map(r=>`<tr><td>${fmt(r.x)}</td><td>${f2(r.d)}</td>${cur>=3?`<td class="c3">${f2(r.sq)}</td>`:''}</tr>`).join('')}</tbody>${cur>=3?`<tfoot><tr><td>Total</td><td>${f2(Math.abs(tot)<1e-9?0:tot)}</td><td class="c3">${f2(d.ssd)}</td></tr></tfoot>`:''}</table></div>`},
+   anim:li=>{const tbl=li.querySelector('.tbl'),rows=[...li.querySelectorAll('tbody tr')];rows.forEach(r=>r.style.opacity=0);
+     rows.forEach((r,i)=>later(li,i*45,()=>{r.style.opacity=1;tbl.scrollTop=r.offsetTop-tbl.clientHeight+50}));}},
+  {t:'Square each difference',
+   html:d=>`<div class="run">Squaring makes every value positive. Without it, the differences would cancel out to 0 and tell us nothing about spread.</div>`,
+   anim:li=>{const l=li.parentNode.querySelector('li[data-i="1"]'),tbl=l.querySelector('.tbl'),cells=[...l.querySelectorAll('tbody .c3')],foot=l.querySelector('tfoot');
+     cells.forEach(c=>c.style.opacity=0);foot.style.opacity=0;
+     cells.forEach((c,i)=>later(li,i*45,()=>{c.style.opacity=1;tbl.scrollTop=c.parentNode.offsetTop-tbl.clientHeight+50}));
+     later(li,cells.length*45+100,()=>{foot.style.opacity=1;tbl.scrollTop=tbl.scrollHeight});}},
+  {t:'Add the squares and divide to get the variance',
+   html:d=>{const pop=sdMode==='pop',div=pop?d.n:d.n-1;return `<div class="run">Σ(x − x̄)² = <b>${fmt(d.ssd)}</b></div><div class="run">${fmt(d.ssd)} ÷ ${pop?'n':'(n − 1)'} = ${fmt(d.ssd)} ÷ ${div} = <b class="runv">${fmt(d.ssd/div)}</b> (the variance)</div>`},
+   anim:(li,d)=>countUp(li.querySelector('.runv'),d.ssd/(sdMode==='pop'?d.n:d.n-1),2,900)},
+  {t:'Take the square root',
+   html:d=>{const pop=sdMode==='pop',v=d.ssd/(pop?d.n:d.n-1),sd=Math.sqrt(v);return `<div class="run">√${fmt(v)} = <b class="runv">${fmt(sd)}</b></div>${res(`${pop?'σ':'s'} = ${fmt(sd)} percentage points`)}`},
+   anim:(li,d)=>countUp(li.querySelector('.runv'),sdMode==='pop'?d.sdPop:d.sdSamp,2,900)}
+]);
+function setSd(m){
+  sdMode=m;
+  document.getElementById('sdPop').setAttribute('aria-pressed',m==='pop');
+  document.getElementById('sdSamp').setAttribute('aria-pressed',m==='samp');
+  sdStepper.render(false); renderSummary();
+}
+document.getElementById('sdPop').onclick=()=>setSd('pop');
+document.getElementById('sdSamp').onclick=()=>setSd('samp');
+
+/* 5. charts */
+const BANDS=[{l:'Below 50%',lo:0,hi:50},{l:'50–59%',lo:50,hi:60},{l:'60–69%',lo:60,hi:70},{l:'70–79%',lo:70,hi:80},{l:'80% and above',lo:80,hi:1000}];
+const BAND_COL=['#D32F2F','#F9A825','#43A047','#00ACC1','#5E35B1'];
+const BAND_TXT=['#fff','#14213D','#fff','#fff','#fff'];
+const bandCounts=k=>BANDS.map(b=>D[k].raw.filter(v=>v>=b.lo&&v<b.hi).length);
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function renderBandTable(){
+  const cA=bandCounts('A'), cB=bandCounts('B');
+  document.getElementById('bandTable').innerHTML=`<thead><tr><th>Grade band</th><th>Class A students</th><th>Class A %</th><th>Class B students</th><th>Class B %</th></tr></thead><tbody>${BANDS.map((b,i)=>`<tr><td>${b.l}</td><td>${cA[i]}</td><td>${fmt(cA[i]/D.A.n*100,1)}%</td><td>${cB[i]}</td><td>${fmt(cB[i]/D.B.n*100,1)}%</td></tr>`).join('')}</tbody><tfoot><tr><td>Total</td><td>${D.A.n}</td><td>100%</td><td>${D.B.n}</td><td>100%</td></tr></tfoot>`;
+}
+const sliceLabels={id:'sliceLabels',afterDatasetsDraw(chart){
+  const meta=chart.getDatasetMeta(0),ctx=chart.ctx;
+  meta.data.forEach((arc,i)=>{const v=chart.data.datasets[0].data[i];if(!v)return;const p=arc.tooltipPosition();
+    ctx.save();ctx.fillStyle=BAND_TXT[i];ctx.font='700 15px Figtree, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(v,p.x,p.y);ctx.restore();});}};
+const barLabels={id:'barLabels',afterDatasetsDraw(chart){
+  const ctx=chart.ctx;chart.data.datasets.forEach((ds,di)=>chart.getDatasetMeta(di).data.forEach((bar,i)=>{
+    ctx.save();ctx.fillStyle='#14213D';ctx.font='600 13px Figtree, sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(ds.data[i],bar.x,bar.y-4);ctx.restore();}));}};
+function drawCharts(){
+  const box=document.getElementById('charts');
+  if(typeof Chart==='undefined'){box.querySelectorAll('.chartbox').forEach(c=>c.innerHTML='<div class="err">The chart library could not load. The table below shows the same data.</div>');return;}
+  charts.forEach(c=>c.destroy()); charts=[];
+  Chart.defaults.color='#14213D'; Chart.defaults.font.family='Figtree, system-ui, sans-serif'; Chart.defaults.font.size=13;
+  ['A','B'].forEach(k=>{
+    const data=bandCounts(k);
+    charts.push(new Chart(document.getElementById('pie'+k),{type:'pie',plugins:[sliceLabels],data:{labels:BANDS.map(b=>b.l),datasets:[{data,backgroundColor:BAND_COL,borderColor:'#fff',borderWidth:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} students (${fmt(c.raw/D[k].n*100,1)}%)`}}}}}));
+  });
+  const pc=barMode==='pct';
+  const vals=k=>bandCounts(k).map(c=>pc?+(c/D[k].n*100).toFixed(1):c);
+  charts.push(new Chart(document.getElementById('bar'),{type:'bar',plugins:[barLabels],data:{labels:BANDS.map(b=>b.l),datasets:[
+    {label:'Class A',data:vals('A'),backgroundColor:'#1F46D1',borderRadius:4},
+    {label:'Class B',data:vals('B'),backgroundColor:'#F57C00',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},title:{display:true,text:'Grade band'}},y:{beginAtZero:true,grace:'10%',grid:{color:'#D9DFE8'},title:{display:true,text:pc?'% of class':'Number of students'},ticks:pc?{callback:v=>v+'%'}:{precision:0}}},
+      plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${pc?c.raw+'%':c.raw+' students'}`}}}}}));
+}
+function syncBar(){document.getElementById('barCount').setAttribute('aria-pressed',barMode==='count');document.getElementById('barPct').setAttribute('aria-pressed',barMode==='pct')}
+document.getElementById('barCount').onclick=()=>{barMode='count';syncBar();drawCharts()};
+document.getElementById('barPct').onclick=()=>{barMode='pct';syncBar();drawCharts()};
+
+/* 6. box plot */
+const AX={lo:40,hi:95,step:5,L:90,R:30,W:780};
+function computeAxis(){const all=[...D.A.raw,...D.B.raw],mn=Math.min(...all),mx=Math.max(...all);
+  AX.lo=Math.max(0,Math.floor((mn-4)/5)*5);AX.hi=Math.min(100,Math.ceil((mx+4)/5)*5);
+  if(AX.hi-AX.lo<10){AX.hi=Math.min(100,AX.lo+10);AX.lo=Math.max(0,AX.hi-10);}
+  AX.step=(AX.hi-AX.lo)>60?10:5;
+  if(AX.step===10){AX.lo=Math.floor(AX.lo/10)*10;AX.hi=Math.min(100,Math.ceil(AX.hi/10)*10);}}
+const bx=v=>AX.L+(v-AX.lo)/(AX.hi-AX.lo)*(AX.W-AX.L-AX.R);
+const ROW={A:{y:95,c:'var(--a)',f:'var(--a-soft)'},B:{y:195,c:'var(--b)',f:'var(--b-soft)'}};
+const BH=46;
+const STEPS=[
+ {t:'Draw one shared scale',d:()=>`Both classes use the same scale, ${AX.lo}% to ${AX.hi}%, so position and length can be compared directly.`},
+ {t:'Mark the lowest and highest values',d:()=>KEYS.map(k=>`${NAME[k]}: lowest ${fmt(D[k].min)}%, highest ${fmt(D[k].max)}%.`).join(' ')},
+ {t:'Draw the box from Q1 to Q3',d:()=>KEYS.map(k=>`${NAME[k]}: Q1 ${fmt(D[k].q1)}%, Q3 ${fmt(D[k].q3)}%, so the box holds the middle 50% of students.`).join(' ')+' Where two values are highlighted, the quartile is halfway between them.'},
+ {t:'Add the median',d:()=>KEYS.map(k=>`${NAME[k]}: median ${fmt(D[k].q2)}%, drawn as a line inside the box.`).join(' ')+' Where two values are highlighted, the median is halfway between them.'},
+ {t:'Draw the whiskers and flag outliers',d:()=>KEYS.map(k=>{const d=D[k];return `${NAME[k]}: whiskers run to ${fmt(d.wLo)}% and ${fmt(d.wHi)}%. ${d.outliers.length?`Outlier${d.outliers.length>1?'s':''}: ${d.outliers.map(v=>fmt(v)+'%').join(', ')}.`:'No outliers.'}`}).join(' ')}
+];
+function buildBox(){
+  let s='';
+  const ticks=[];for(let v=AX.lo;v<=AX.hi;v+=AX.step)ticks.push(v);
+  s+=`<g class="stp" data-s="1">`+ticks.map(v=>`<line class="grid" x1="${bx(v)}" x2="${bx(v)}" y1="40" y2="250"/><text class="tick" x="${bx(v)}" y="272" text-anchor="middle">${v}</text>`).join('')+
+     `<line class="axis" x1="${bx(AX.lo)}" x2="${bx(AX.hi)}" y1="250" y2="250"/><text class="tick" x="${(bx(AX.lo)+bx(AX.hi))/2}" y="294" text-anchor="middle">Interim 1 percentage (%)</text>`+
+     KEYS.map(k=>`<text class="rowlab" x="${AX.L-14}" y="${ROW[k].y+5}" text-anchor="end" fill="${ROW[k].c}">${NAME[k]}</text>`).join('')+`</g>`;
+  KEYS.forEach(k=>{
+    const d=D[k], r=ROW[k], y=r.y;
+    s+=`<g class="stp" data-s="2"><circle cx="${bx(d.min)}" cy="${y}" r="5" fill="#fff" stroke="${r.c}" stroke-width="2"/><circle cx="${bx(d.max)}" cy="${y}" r="5" fill="#fff" stroke="${r.c}" stroke-width="2"/>
+      <text class="vlab" x="${bx(d.min)}" y="${y-14}" text-anchor="middle">${fmt(d.min)}</text><text class="vlab" x="${bx(d.max)}" y="${y-14}" text-anchor="middle">${fmt(d.max)}</text></g>`;
+    s+=`<g class="stp" data-s="3"><rect x="${bx(d.q1)}" y="${y-BH/2}" width="${bx(d.q3)-bx(d.q1)}" height="${BH}" fill="${r.f}" stroke="${r.c}" stroke-width="2.5" rx="3"/>
+      <text class="vlab" x="${bx(d.q1)}" y="${y-BH/2-8}" text-anchor="middle">${fmt(d.q1)}</text><text class="vlab" x="${bx(d.q3)}" y="${y-BH/2-8}" text-anchor="middle">${fmt(d.q3)}</text></g>`;
+    s+=`<g class="stp" data-s="4"><line x1="${bx(d.q2)}" x2="${bx(d.q2)}" y1="${y-BH/2}" y2="${y+BH/2}" stroke="${r.c}" stroke-width="5"/>
+      <text class="vlab" x="${bx(d.q2)}" y="${y+BH/2+17}" text-anchor="middle" font-weight="600">${fmt(d.q2)}</text></g>`;
+    s+=`<g class="stp" data-s="5"><line x1="${bx(d.wLo)}" x2="${bx(d.q1)}" y1="${y}" y2="${y}" stroke="${r.c}" stroke-width="2.5"/><line x1="${bx(d.q3)}" x2="${bx(d.wHi)}" y1="${y}" y2="${y}" stroke="${r.c}" stroke-width="2.5"/>
+      <line x1="${bx(d.wLo)}" x2="${bx(d.wLo)}" y1="${y-11}" y2="${y+11}" stroke="${r.c}" stroke-width="2.5"/><line x1="${bx(d.wHi)}" x2="${bx(d.wHi)}" y1="${y-11}" y2="${y+11}" stroke="${r.c}" stroke-width="2.5"/>
+      ${d.outliers.map(v=>`<g stroke="${r.c}" stroke-width="2.5"><line x1="${bx(v)-5}" x2="${bx(v)+5}" y1="${y-5}" y2="${y+5}"/><line x1="${bx(v)-5}" x2="${bx(v)+5}" y1="${y+5}" y2="${y-5}"/></g>`).join('')}</g>`;
+  });
+  document.getElementById('bpSvg').innerHTML=s;
+}
+function renderBoxData(){
+  document.getElementById('bpData').innerHTML=KEYS.map(k=>{
+    const d=D[k], n=d.n, P=[[2,0],[2,n-1]];
+    d.q1Idx.forEach(i=>P.push([3,i])); d.q3Idx.forEach(i=>P.push([3,i]));
+    d.medMid.forEach(i=>P.push([4,i]));
+    P.push([5,d.sorted.indexOf(d.wLo)],[5,d.sorted.lastIndexOf(d.wHi)]);
+    const chips=d.sorted.map((v,i)=>{
+      const mine=P.filter(p=>p[1]===i&&p[0]<=stepNo);
+      let cls=mine.some(p=>p[0]===stepNo)?'hl':(mine.length?'done':'');
+      if(stepNo>=5&&(v<d.loF||v>d.hiF))cls='out';
+      return chip2(v,cls,i+1,'');
+    }).join('');
+    return `<div class="bprow"><span class="bplab" style="color:${ROW[k].c}">${NAME[k]}</span><div class="chips">${chips}</div></div>`;
+  }).join('');
+}
+function setStep(n){
+  stepNo=Math.max(1,Math.min(5,n));
+  renderBoxData();
+  document.querySelectorAll('#bpSvg .stp').forEach(g=>g.style.opacity=(+g.dataset.s<=stepNo)?1:0);
+  document.getElementById('stepInfo').innerHTML=`<h3>Step ${stepNo}: ${STEPS[stepNo-1].t}</h3><p>${STEPS[stepNo-1].d()}</p>`;
+  document.querySelectorAll('#pills button').forEach((b,i)=>{if(i+1===stepNo)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current')});
+  document.getElementById('stepBack').disabled=stepNo===1;
+  document.getElementById('stepNext').disabled=stepNo===5;
+}
+document.getElementById('pills').innerHTML=[1,2,3,4,5].map(i=>`<button type="button" aria-label="Step ${i}">${i}</button>`).join('');
+document.querySelectorAll('#pills button').forEach((b,i)=>b.onclick=()=>setStep(i+1));
+document.getElementById('stepBack').onclick=()=>setStep(stepNo-1);
+document.getElementById('stepNext').onclick=()=>setStep(stepNo+1);
+document.getElementById('stepAll').onclick=()=>setStep(5);
+function renderWork(){
+  const rows=[
+    ['Lowest value (min)',d=>fmt(d.min)],['Lower quartile (Q1)',d=>fmt(d.q1)],['Median (Q2)',d=>fmt(d.q2)],['Upper quartile (Q3)',d=>fmt(d.q3)],['Highest value (max)',d=>fmt(d.max)],
+    ['IQR = Q3 − Q1',d=>`${fmt(d.q3)} − ${fmt(d.q1)} = ${fmt(d.iqr)}`],['1.5 × IQR',d=>fmt(1.5*d.iqr)],
+    ['Lower fence = Q1 − 1.5 × IQR',d=>fmt(d.loF)],['Upper fence = Q3 + 1.5 × IQR',d=>fmt(d.hiF)],
+    ['Outliers',d=>d.outliers.length?d.outliers.map(v=>fmt(v)).join(', '):'None'],
+    ['Whisker ends',d=>`${fmt(d.wLo)} and ${fmt(d.wHi)}`]];
+  document.getElementById('workTable').innerHTML=`<thead><tr><th>Step</th><th>Class A</th><th>Class B</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1](D.A)}</td><td>${r[1](D.B)}</td></tr>`).join('')}</tbody>`;
+}
+
+/* 7. summary */
+function renderSummary(){
+  const A=D.A,B=D.B, pop=sdMode==='pop';
+  const sd=d=>pop?d.sdPop:d.sdSamp;
+  const rows=[['Mean',d=>fmt(d.mean)+'%',(a,b)=>b.mean-a.mean],['Median',d=>fmt(d.median)+'%',(a,b)=>b.median-a.median],['Mode',modeText,null],
+    ['Range',d=>fmt(d.range),(a,b)=>b.range-a.range],['IQR',d=>fmt(d.iqr),(a,b)=>b.iqr-a.iqr],[pop?'Standard deviation (population)':'Standard deviation (sample)',d=>fmt(sd(d)),(a,b)=>sd(b)-sd(a)]];
+  const sgn=x=>(x>0?'+':x<0?'−':'')+fmt(Math.abs(x));
+  document.getElementById('sumTable').innerHTML=`<thead><tr><th>Statistic</th><th>Class A</th><th>Class B</th><th>B − A</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1](A)}</td><td>${r[1](B)}</td><td>${r[2]?sgn(r[2](A,B)):'–'}</td></tr>`).join('')}</tbody>`;
+  const hiMed=B.median>A.median?'B':'A', loMed=hiMed==='A'?'B':'A';
+  const hiMean=B.mean>A.mean?'B':'A';
+  const centre=`Class ${hiMed} has the higher median (${fmt(D[hiMed].median)}% against ${fmt(D[loMed].median)}%), a gap of ${fmt(Math.abs(B.median-A.median))} percentage points. ${hiMean===hiMed?`The means agree: Class ${hiMean} is ahead by ${fmt(Math.abs(B.mean-A.mean))}.`:`The means point the other way, so the centre of the two classes is close.`}`;
+  const wideIqr=B.iqr>A.iqr?'B':'A', narIqr=wideIqr==='A'?'B':'A';
+  const wideSd=sd(B)>sd(A)?'B':'A', narSd=wideSd==='A'?'B':'A';
+  const spread=`Class ${wideIqr} has the larger IQR (${fmt(D[wideIqr].iqr)} against ${fmt(D[narIqr].iqr)}), so its middle 50% is more spread out. ${wideSd===wideIqr?`Standard deviation agrees (${fmt(sd(D[wideSd]))} against ${fmt(sd(D[narSd]))}).`:`Standard deviation says Class ${wideSd} is more spread out overall (${fmt(sd(D[wideSd]))} against ${fmt(sd(D[narSd]))}), because it is affected by values far from the mean.`} ${B.range===A.range?`Both classes have the same range (${fmt(A.range)}).`:`Class ${B.range>A.range?'B':'A'} has the wider range (${fmt(Math.max(A.range,B.range))} against ${fmt(Math.min(A.range,B.range))}).`}`;
+  const skew=d=>{const g=d.mean-d.median;return Math.abs(g)<1?`roughly symmetric (mean and median within ${fmt(Math.abs(g))})`:g>0?`skewed towards higher marks, with the mean ${fmt(g)} above the median`:`skewed towards lower marks, with the mean ${fmt(-g)} below the median`};
+  const shape=`Class A is ${skew(A)}. Class B is ${skew(B)}.`;
+  const out=d=>d.outliers.length?d.outliers.map(v=>fmt(v)+'%').join(', '):'none';
+  const outl=`Class A outliers: ${out(A)}. Class B outliers: ${out(B)}.`;
+  document.getElementById('findings').innerHTML=[['Centre',centre],['Spread',spread],['Shape',shape],['Outliers',outl],['A note on reading this','These figures describe the two cohorts on one assessment. They show how the classes differ, not why.']].map(f=>`<li><b>${f[0]}</b>${f[1]}</li>`).join('');
+}
+
+/* init */
+function refreshBox(){computeAxis();buildBox();renderWork();setStep(stepNo);}
+function refreshAll(){
+  clearTimeout(refreshTimer);
+  const ok=KEYS.every(k=>validCount(k)>=MINN);
+  const notice=document.getElementById('rawNotice');
+  document.getElementById('analysis').hidden=!ok;
+  notice.hidden=ok;
+  if(!ok){
+    const need=KEYS.filter(k=>validCount(k)<MINN).map(k=>NAME[k]).join(' and ');
+    notice.textContent=`${need} ${need.includes(' and ')?'need':'needs'} at least ${MINN} values before the statistics can be calculated. Add more values above.`;
+    return;
+  }
+  D.A=compute('A'); D.B=compute('B');
+  stemRefresh();
+  STEPPERS.forEach(s=>s.render(false));
+  renderBandTable(); drawCharts(); refreshBox(); renderSummary();
+}
+renderEditor(); computeAxis(); renderSummary(); renderBandTable(); syncBar(); drawCharts(); buildBox(); renderWork(); setStep(1);
+</script>
+</body>
+</html>
